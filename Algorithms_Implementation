@@ -1,0 +1,180 @@
+##Time series Model implementation - Monthly Series
+
+auto_arima_model <- function(train, test){
+  arima_model <- auto.arima(train, seasonal = FALSE)
+  arima_forecast <- as.data.frame(forecast(arima_model, h = length(test)))
+  plot(forecast(arima_model, h = length(test)))
+  arima_forecast$`Point Forecast` <- ifelse(arima_forecast$`Point Forecast`<0,0,arima_forecast$`Point Forecast`)
+  return(arima_forecast$`Point Forecast`)
+}
+
+seas_arima_model <- function(train, test){
+  #Seasonal arima
+  arima_seas <- auto.arima(train,D = 1)
+  arima_seas_forecast <- as.data.frame(forecast(arima_seas,h = length(test)))
+  #plot(forecast(arima_seas,h = length(test), type="l"))
+  #lines(test, col="red")
+  arima_seas_forecast$`Point Forecast` <- ifelse(arima_seas_forecast$`Point Forecast`<0,0,arima_seas_forecast$`Point Forecast`)
+  return(arima_seas_forecast$`Point Forecast`)
+}
+
+Holt_forecast <- NULL
+
+Holt_model <- function(train, test){
+  #Holt Winters - additive
+  Holt_forecast$`Point Forecast` <- tryCatch({
+    Holt_model <- HoltWinters(train, seasonal = "additive")
+    print('hi')
+    Holt_forecast <- as.data.frame(forecast(Holt_model, h = length(test)))
+    plot(forecast(Holt_model, h = length(test)))
+    lines(test, col="red")
+    Holt_forecast$`Point Forecast` <- ifelse(Holt_forecast$`Point Forecast`<0,0,Holt_forecast$`Point Forecast`)
+  }, error = function(e){
+    message(e)
+    Holt_forecast <- NULL
+    Holt_forecast$`Point Forecast` <- rep(NA, length(test)) 
+    print(Holt_forecast)
+    #print(Holt_forecast$`Point Forecast`)
+    return (Holt_forecast$`Point Forecast`)
+  })
+  return (Holt_forecast$`Point Forecast`)
+}
+
+
+ets_model <- function(train, test){
+  #ets
+  ets_model <- ets(train)
+  ets_forecast <- as.data.frame(forecast(ets_model, h = length(test)))
+  plot(forecast(ets_model, h = length(test)))
+  ets_forecast$`Point Forecast` <- ifelse(ets_forecast$`Point Forecast`<0,0,ets_forecast$`Point Forecast`)
+  return (ets_forecast$`Point Forecast`)
+}
+
+stl_forecast <- c()
+
+stl_model <- function(train, test){
+  #stl
+  tryCatch({stl_model <- stl(train, s.window = "period")
+  stl_forecast <- as.data.frame(forecast(stl_model, h=length(test), method="arima"))
+  plot(forecast(stl_model, h=6, method="arima"))}, error = function(e){
+    stl_forecast$`Point Forecast` <- rep(NA, length(test))
+    return (stl_forecast$`Point Forecast`)
+  })
+  lines(test, col="red")
+  if(length(stl_forecast$`Point Forecast`)!=0){
+    if(!is.na(stl_forecast$`Point Forecast`)[1]){
+      stl_forecast$`Point Forecast` <- ifelse(stl_forecast$`Point Forecast`<0,0,stl_forecast$`Point Forecast`)
+    }
+  } else{
+    stl_forecast$`Point Forecast` <- rep(NA, length(test))
+  }
+  return(stl_forecast$`Point Forecast`)
+}
+
+tbats_model <- function(train, test){
+  #tbats
+  print("tbats")
+  tbats_model <- tbats(train)
+  tbats_forecast <- as.data.frame(forecast(tbats_model, h = length(test)))
+  plot(forecast(tbats_model, h = length(test)))
+  tbats_forecast$`Point Forecast` <- ifelse(tbats_forecast$`Point Forecast`<0,0,tbats_forecast$`Point Forecast`)
+  return(tbats_forecast$`Point Forecast`)
+}
+
+tbats_seas_model <- function(train, test){
+  #tbats seasonal
+  tbats_seas_model <- tbats(train, seasonal.periods = 12)
+  tbats_seas_forecast <- as.data.frame(forecast(tbats_seas_model, h = length(test)))
+  plot(forecast(tbats_seas_model, h = length(test)))
+  tbats_seas_forecast$`Point Forecast` <- ifelse(tbats_seas_forecast$`Point Forecast`<0,0,tbats_seas_forecast$`Point Forecast`)
+  return(tbats_seas_forecast$`Point Forecast`)
+}
+
+bats_model <- function(train, test){
+  #bats model
+  bats_model <- bats(train)
+  bats_forecast <- as.data.frame(forecast(bats_model,h = length(test)))
+  plot(forecast(bats_model, h = length(test)))
+  bats_forecast$`Point Forecast` <- ifelse(bats_forecast$`Point Forecast` <0,0,bats_forecast$`Point Forecast`)
+  return(bats_forecast$`Point Forecast`)
+}
+
+croston_forecast<- c()
+
+croston_model <- function(train, test){
+  #croston model
+  if(length(train[train!=0])<2){
+    croston_forecast$frc.out <- rep(NA,length(test))
+  } else{
+    croston_forecast <- crost(train, h = length(test), type = "croston")  
+    croston_forecast$frc.out <- ifelse(croston_forecast$frc.out<0,0,croston_forecast$frc.out)
+  }
+  return(croston_forecast$frc.out)
+}
+
+
+sba_forecast <- c()
+sba_model <- function(train, test){
+  #sba model
+  if(length(train[train!=0])<2){
+    sba_forecast$frc.out <- rep(NA,length(test))
+  } else {
+    sba_forecast <- crost(train, h=length(test), type = "sba")
+    sba_forecast$frc.out <- ifelse(sba_forecast$frc.out<0,0,sba_forecast$frc.out)
+  } 
+  return(sba_forecast$frc.out)
+}
+
+nnet_model <- function(train, test){
+  #neural network
+  set.seed(123)
+  nnet_model <- nnetar(train)
+  nnet_forecast <- as.numeric(as.character(t(as.data.frame(forecast(nnet_model, h = length(test))))))
+  nnet_forecast <- ifelse(nnet_forecast<0 ,0, nnet_forecast)
+  return(nnet_forecast)
+}
+
+seas_naive_model <- function(train, test){
+  tryCatch({
+    snaive_model <- as.data.frame(snaive(train, h = length(test)))
+    plot(snaive(train, h = length(test)))
+    snaive_model$`Point Forecast` <-  ifelse(snaive_model$`Point Forecast`<0,0, snaive_model$`Point Forecast`)
+  }, error = function(e){
+    message(e)
+    snaive_model$`Point Forecast` <- rep(NA, length(test))
+  }) 
+  return(snaive_model$`Point Forecast`)
+}
+
+stlf_model <- function(train, test){
+  stlf_model<- as.data.frame(stlf(train, method ="naive", h =length(test)))
+  plot(stlf(train, method ="naive", h =length(test)))
+  lines(test, col="red")
+  stlf_model$`Point Forecast` <- ifelse(stlf_model$`Point Forecast`<0,0,stlf_model$`Point Forecast`)
+  return(stlf_model$`Point Forecast`)
+}
+
+hybrid_model <- function(train,test){
+  set.seed(123)
+  if(length(train)>24){
+    hybrid_model1 <- hybridModel(train, models ="estz", errorMethod = "MAE")
+  } else {
+    hybrid_model1 <- hybridModel(train, models ="etz", errorMethod = "MAE")
+  } 
+  hybrid_forecast <- as.data.frame(forecast(hybrid_model1, h=length(test)))
+  hybrid_forecast$`Point Forecast` <- ifelse(hybrid_forecast$`Point Forecast`<0,0,hybrid_forecast$`Point Forecast`)
+  #plot(hybrid_model1, type = "models")
+  return(hybrid_forecast$`Point Forecast`)
+}
+
+tslm_model <- function(train, test){
+  if(length(train)>8){
+    tslm_model1 <- tslm(train ~ trend + season)
+  } else {
+    tslm_model1 <- rep(NA,length(test))
+  }
+  tslm_forecast <- as.data.frame(forecast(tslm_model1, h=length(test)))
+  tslm_forecast$`Point Forecast` <-  ifelse(tslm_forecast$`Point Forecast` <0 ,0 , ceiling(tslm_forecast$`Point Forecast`))
+  return(tslm_forecast$`Point Forecast`)
+}
+
